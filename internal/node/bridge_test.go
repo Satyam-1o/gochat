@@ -10,7 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"gochat/internal/identity"
+	"github.com/Satyam-1o/gochat/internal/identity"
 )
 
 // TestBridgeStarTopology validates the premise of the rendezvous bridge: two

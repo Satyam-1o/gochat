@@ -8,9 +8,9 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"gochat/internal/identity"
-	"gochat/internal/node"
-	"gochat/internal/store"
+	"github.com/Satyam-1o/gochat/internal/identity"
+	"github.com/Satyam-1o/gochat/internal/node"
+	"github.com/Satyam-1o/gochat/internal/store"
 )
 
 func testNode(t *testing.T, ctx context.Context) *node.Node {

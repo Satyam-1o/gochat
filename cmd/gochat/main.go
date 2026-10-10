@@ -13,14 +13,13 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"gochat/internal/identity"
-	"gochat/internal/node"
-	"gochat/internal/room"
-	"gochat/internal/store"
-	"gochat/internal/tui"
+	"github.com/Satyam-1o/gochat/internal/identity"
+	"github.com/Satyam-1o/gochat/internal/node"
+	"github.com/Satyam-1o/gochat/internal/room"
+	"github.com/Satyam-1o/gochat/internal/store"
+	"github.com/Satyam-1o/gochat/internal/tui"
+	"github.com/Satyam-1o/gochat/internal/version"
 )
-
-const version = "0.1.0"
 
 func main() {
 	fs := flag.NewFlagSet("gochat", flag.ExitOnError)
@@ -28,6 +27,7 @@ func main() {
 	nick := fs.String("nick", "", "display name (overrides saved config)")
 	bootstrap := fs.String("bootstrap", "", "comma-separated rendezvous/relay node multiaddrs (overrides saved config)")
 	showVersion := fs.Bool("version", false, "print version and exit")
+	debug := fs.Bool("debug", false, "keep logs on stderr instead of writing them to <config>/gochat.log")
 
 	// Headless mode: join a room without the TUI, useful for scripts and CI.
 	headless := fs.Bool("headless", false, "run without the TUI (for scripts/CI)")
@@ -40,7 +40,7 @@ func main() {
 	_ = fs.Parse(os.Args[1:])
 
 	if *showVersion {
-		fmt.Printf("gochat %s\n", version)
+		fmt.Printf("gochat %s\n", version.String())
 		return
 	}
 
@@ -65,7 +65,7 @@ func main() {
 		return
 	}
 
-	if err := run(dir, *nick, *bootstrap); err != nil {
+	if err := run(dir, *nick, *bootstrap, *debug); err != nil {
 		fatal(err)
 	}
 }
@@ -82,10 +82,18 @@ func resolvePassphrase(pass, passFile string) (string, error) {
 	return pass, nil
 }
 
-func run(dir, nick, bootstrapFlag string) error {
+func run(dir, nick, bootstrapFlag string, debug bool) error {
 	st, err := store.Open(dir)
 	if err != nil {
 		return err
+	}
+
+	// Background libraries log through the standard logger, which would
+	// scribble over the Bubble Tea screen. Send it to a file instead.
+	logCloser, logPath, logErr := setupLogging(dir, debug)
+	defer logCloser()
+	if logErr != nil {
+		fmt.Fprintf(os.Stderr, "gochat: warning: cannot open log file, logging to stderr: %v\n", logErr)
 	}
 
 	cfg := st.LoadConfig()
@@ -112,7 +120,7 @@ func run(dir, nick, bootstrapFlag string) error {
 		Bootstrap:   cfg.Bootstrap,
 		MDNS:        true,
 		MDNSService: "gochat",
-		UserAgent:   "gochat/" + version,
+		UserAgent:   "gochat/" + version.Version,
 	})
 	if err != nil {
 		return err
@@ -129,7 +137,7 @@ func run(dir, nick, bootstrapFlag string) error {
 	if rooms, err := st.LoadRooms(); err == nil {
 		saved = len(rooms)
 	}
-	banner(nd, cfg, saved)
+	banner(nd, cfg, saved, logPath)
 
 	if err := mgr.Restore(); err != nil {
 		log.Printf("warning: restore failed: %v", err)
@@ -142,12 +150,15 @@ func run(dir, nick, bootstrapFlag string) error {
 	return nil
 }
 
-func banner(nd *node.Node, cfg store.Config, restored int) {
+func banner(nd *node.Node, cfg store.Config, restored int, logPath string) {
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  gochat "+version+" — p2p terminal chat")
+	fmt.Fprintln(os.Stderr, "  gochat "+version.Version+" — p2p terminal chat")
 	fmt.Fprintf(os.Stderr, "  peer ID   : %s\n", nd.ID())
 	fmt.Fprintf(os.Stderr, "  listening : %s / etc\n", shortAddr(nd.Addrs()))
 	fmt.Fprintf(os.Stderr, "  rooms saved: %d (auto-joining…)\n", restored)
+	if logPath != "" {
+		fmt.Fprintf(os.Stderr, "  log file  : %s\n", logPath)
+	}
 	if len(cfg.Bootstrap) == 0 {
 		fmt.Fprintln(os.Stderr, "  rendezvous: none configured — internet discovery disabled")
 		fmt.Fprintln(os.Stderr, "               add one with: gochat -bootstrap /ip4/<public>/tcp/<port>/p2p/<peerID>")
@@ -155,6 +166,23 @@ func banner(nd *node.Node, cfg store.Config, restored int) {
 		fmt.Fprintf(os.Stderr, "  rendezvous: %d bootstrap node(s)\n", len(cfg.Bootstrap))
 	}
 	fmt.Fprintln(os.Stderr)
+}
+
+// setupLogging redirects the standard logger to <dir>/gochat.log so that
+// library log lines cannot corrupt the TUI. When debug is true, logging is left
+// on stderr. The returned cleanup func is always non-nil; logPath is empty when
+// logging to stderr.
+func setupLogging(dir string, debug bool) (cleanup func(), logPath string, err error) {
+	if debug {
+		return func() {}, "", nil
+	}
+	path := filepath.Join(dir, "gochat.log")
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
+	if err != nil {
+		return func() {}, "", err
+	}
+	log.SetOutput(f)
+	return func() { _ = f.Close() }, path, nil
 }
 
 func shortAddr(addrs []string) string {
@@ -216,7 +244,7 @@ func runHeadless(dir, nick, bootstrapFlag, roomName, passphrase, send, expect st
 		PrivKey:   priv,
 		Bootstrap: cfg.Bootstrap,
 		MDNS:      false,
-		UserAgent: "gochat-headless/" + version,
+		UserAgent: "gochat-headless/" + version.Version,
 	})
 	if err != nil {
 		return err

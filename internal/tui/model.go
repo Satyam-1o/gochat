@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"gochat/internal/node"
-	"gochat/internal/room"
+	"github.com/Satyam-1o/gochat/internal/node"
+	"github.com/Satyam-1o/gochat/internal/room"
 )
 
 // Layout constants.

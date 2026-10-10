@@ -21,9 +21,9 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"gochat/internal/crypto"
-	"gochat/internal/node"
-	"gochat/internal/store"
+	"github.com/Satyam-1o/gochat/internal/crypto"
+	"github.com/Satyam-1o/gochat/internal/node"
+	"github.com/Satyam-1o/gochat/internal/store"
 )
 
 // EventType enumerates the events a Manager emits to the UI.

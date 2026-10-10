@@ -18,7 +18,7 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	"gochat/internal/pex"
+	"github.com/Satyam-1o/gochat/internal/pex"
 )
 
 // DefaultListenAddrStrings are used when none are provided.

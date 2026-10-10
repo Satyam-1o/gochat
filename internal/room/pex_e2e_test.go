@@ -8,8 +8,8 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/network"
 
-	"gochat/internal/identity"
-	"gochat/internal/node"
+	"github.com/Satyam-1o/gochat/internal/identity"
+	"github.com/Satyam-1o/gochat/internal/node"
 )
 
 // testServerNode creates a rendezvous/relay node (PEX server) on loopback.

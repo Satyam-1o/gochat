@@ -21,8 +21,9 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	"gochat/internal/identity"
-	"gochat/internal/node"
+	"github.com/Satyam-1o/gochat/internal/identity"
+	"github.com/Satyam-1o/gochat/internal/node"
+	"github.com/Satyam-1o/gochat/internal/version"
 )
 
 type stringSlice []string
@@ -39,7 +40,13 @@ func main() {
 	var extra stringSlice
 	flag.Var(&extra, "listen", "extra listen multiaddr (repeatable, e.g. /ip4/0.0.0.0/udp/4001/quic-v1)")
 	flag.Var(&announce, "announce", "explicit announce multiaddr with peer ID (repeatable, e.g. /dns4/chat.example.com/tcp/4001/p2p/<id>)")
+	showVersion := flag.Bool("version", false, "print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("gochat-rendezvous %s\n", version.String())
+		return
+	}
 
 	dir := *dataDir
 	if dir == "" {
@@ -78,7 +85,7 @@ func main() {
 
 	peerID := nd.ID()
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  gochat-rendezvous — PEX + circuit relay node")
+	fmt.Fprintln(os.Stderr, "  gochat-rendezvous "+version.Version+" — PEX + circuit relay node")
 	fmt.Fprintf(os.Stderr, "  peer ID : %s\n", peerID)
 
 	if len(announce) > 0 {

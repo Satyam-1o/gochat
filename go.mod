@@ -1,4 +1,4 @@
-module gochat
+module github.com/Satyam-1o/gochat
 
 go 1.27.1
 

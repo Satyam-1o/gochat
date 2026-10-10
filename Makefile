@@ -12,8 +12,19 @@ BINDIR  ?= bin
 PORT    ?= 4001
 PUBLIC  ?= $(shell hostname -I 2>/dev/null | awk '{print $$1}')
 
+# Build metadata, injected into internal/version. Override on the command line
+# (e.g. `make build VERSION=v1.0.0`) for reproducible release builds.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo none)
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+VERSION_PKG := github.com/Satyam-1o/gochat/internal/version
+
 GOFLAGS  ?=
-LDFLAGS  ?= -s -w
+LDFLAGS  ?= -s -w \
+	-X $(VERSION_PKG).Version=$(VERSION) \
+	-X $(VERSION_PKG).Commit=$(COMMIT) \
+	-X $(VERSION_PKG).Date=$(DATE)
 
 CLIENT   := $(BINDIR)/gochat
 RENDEZVOUS := $(BINDIR)/gochat-rendezvous

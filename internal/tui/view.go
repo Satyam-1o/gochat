@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 
-	"gochat/internal/room"
+	"github.com/Satyam-1o/gochat/internal/room"
 )
 
 func (m *Model) mainW() int {

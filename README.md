@@ -57,11 +57,23 @@ peer IDs, and ciphertext. You can host it on the smallest VPS you can find.
 ## Build
 
 ```sh
-git clone <this repo> gochat && cd gochat
+git clone https://github.com/Satyam-1o/gochat.git
+cd gochat
 make build          # -> bin/gochat and bin/gochat-rendezvous
 ```
 
-Or directly:
+Or install with the Go toolchain:
+
+```sh
+go install github.com/Satyam-1o/gochat/cmd/gochat@latest
+go install github.com/Satyam-1o/gochat/cmd/gochat-rendezvous@latest
+```
+
+Prebuilt binaries for Linux, macOS and Windows (amd64/arm64) are attached to each
+[release](https://github.com/Satyam-1o/gochat/releases). Either way, `gochat -version`
+and `gochat-rendezvous -version` print the build version, commit and date.
+
+Or build directly:
 
 ```sh
 go build -o bin/gochat ./cmd/gochat
@@ -180,6 +192,7 @@ Use `-nick <name>` to set a display name, or `/nick <name>` inside the app.
 | Identity key | `<config>/identity` (0600) |
 | Saved rooms | `<config>/rooms.json` (0600, stores the derived room key + topic, **not** the passphrase) |
 | Display name / bootstrap | `<config>/config.json` |
+| Client log | `<config>/gochat.log` (0600; library logs go here so they can't corrupt the TUI — use `-debug` to log to stderr instead) |
 
 The rendezvous node stores only its identity key (in `-data`), which keeps its peer
 ID — and therefore your clients' saved bootstrap address — stable across restarts.
@@ -240,6 +253,10 @@ binaries.
 - That's expected and harmless. Delivery goes through the rendezvous bridge; direct
   links are only an optimization.
 
+**Need to see what the client is doing?**
+- The TUI writes library logs to `<config>/gochat.log`. Re-run with `-debug` to send
+  them to stderr instead (useful when piping output).
+
 ---
 
 ## Project layout
@@ -254,6 +271,7 @@ internal/pex/            peer-exchange protocol (register/discover/introduce)
 internal/room/           gossipsub room manager, encryption, presence, persistence
 internal/store/          JSON persistence (config, rooms), atomic writes, 0600
 internal/tui/            Bubble Tea model, view and commands
+internal/version/        build metadata injected via -ldflags
 deploy/                  systemd unit, Dockerfile, docker-compose
 scripts/smoke-test.sh    end-to-end test with the real binaries
 ```
@@ -277,4 +295,4 @@ scripts/smoke-test.sh    end-to-end test with the real binaries
 
 ## License
 
-Add a license of your choice (e.g. MIT) before distributing.
+[MIT](LICENSE) © 2026 Satyam-1o.
