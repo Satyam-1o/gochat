@@ -13,7 +13,7 @@ variable "name" {
 variable "instance_type" {
   description = "EC2 instance type. Default is a cheap ARM (Graviton) instance."
   type        = string
-  default     = "t4g.nano"
+  default     = "t4g.micro"
 }
 
 variable "architecture" {

@@ -8,7 +8,7 @@ node, with a static public IP so clients' saved bootstrap addresses keep working
 - A dedicated VPC with a public subnet, internet gateway, and route table.
 - A security group opening `gochat_port` (default `4001`) for **TCP and UDP**
   (QUIC), plus optional SSH.
-- An **Amazon Linux 2023** EC2 instance (default `t4g.nano`, ARM) with
+- An **Amazon Linux 2023** EC2 instance (default `t4g.micro`, ARM) with
   **IMDSv2 required**.
 - An **Elastic IP** (static public address).
 - An IAM instance profile for **SSM Session Manager**, so you can get a shell
@@ -72,7 +72,7 @@ ssh_cidr     = "203.0.113.4/32"     # your IP — never 0.0.0.0/0
 | --- | --- | --- |
 | `aws_region` | `us-east-1` | Region to deploy into |
 | `name` | `gochat` | Resource name prefix |
-| `instance_type` | `t4g.nano` | EC2 instance type |
+| `instance_type` | `t4g.micro` | EC2 instance type |
 | `architecture` | `arm64` | AMI arch; use `x86_64` with e.g. `t3.micro` |
 | `availability_zone` | `""` | Empty = first available in the region |
 | `gochat_port` | `4001` | Listen port (TCP + UDP) |
@@ -91,7 +91,7 @@ architecture  = "x86_64"
 
 ## Cost
 
-Roughly **$6–8/month** in `us-east-1` for a `t4g.nano` (on-demand) plus the
+Roughly **$9–11/month** in `us-east-1` for a `t4g.micro` (on-demand) plus the
 public IPv4 address charge. See the
 [AWS Free Tier](https://aws.amazon.com/free/) for whether your account has
 credits. Destroy the stack when you're done to stop the charges.

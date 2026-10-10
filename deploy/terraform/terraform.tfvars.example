@@ -2,7 +2,7 @@
 
 aws_region      = "us-east-1"
 name            = "gochat"
-instance_type   = "t4g.nano" # ARM/Graviton; use a t3.* type with architecture = "x86_64"
+instance_type   = "t4g.micro" # ARM/Graviton; use a t3.* type with architecture = "x86_64"
 architecture    = "arm64"
 # availability_zone = "us-east-1a"  # empty = first available
 
