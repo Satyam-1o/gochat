@@ -1,0 +1,15 @@
+#!/bin/bash
+# Cloud-init bootstrap for the gochat rendezvous node.
+# Rendered by Terraform (deploy/terraform/user_data.sh.tftpl).
+set -euo pipefail
+
+echo "gochat: downloading installer from GitHub"
+curl -fsSL -o /tmp/install-rendezvous.sh \
+  "https://raw.githubusercontent.com/${repo}/${ref}/scripts/install-rendezvous.sh"
+chmod +x /tmp/install-rendezvous.sh
+
+echo "gochat: running installer"
+/tmp/install-rendezvous.sh \
+  --repo "${repo}" \
+  --port "${port}" \
+  --version "${version}"

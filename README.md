@@ -54,7 +54,9 @@ peer IDs, and ciphertext. You can host it on the smallest VPS you can find.
 
 - Go 1.27+ to build (or use the provided Docker image for the server).
 - Any modern terminal.
-- For internet use: a small always-on machine with a public IP.
+- For internet use: a small always-on machine with a public IP (a VPS, or the
+  [Terraform setup](deploy/terraform/README.md) on AWS).
+- Terraform 1.5+ only if you use the AWS option.
 
 ---
 
@@ -88,9 +90,39 @@ go build -o bin/gochat-rendezvous ./cmd/gochat-rendezvous
 
 ## 1. Run a rendezvous node
 
-Pick **one** of the following. The node prints a ready-to-paste client address.
+Pick **one** of the following. Whatever you choose, the node prints a
+ready-to-paste `client: gochat -bootstrap "..."` address.
 
-### Option A — systemd (recommended on a VPS)
+### Option A — one-line installer (recommended, any Linux VPS)
+
+Installs the latest release as a hardened systemd service, creates a service
+user, opens the listen port in the local firewall, and prints the bootstrap
+address. Works on Debian/Ubuntu, RHEL/Fedora, and Amazon Linux.
+
+```sh
+curl -fsSL -o install-rendezvous.sh \
+  https://raw.githubusercontent.com/Satyam-1o/gochat/main/scripts/install-rendezvous.sh
+sudo bash install-rendezvous.sh
+```
+
+Run `sudo bash install-rendezvous.sh --help` for options such as `--port`,
+`--public`, and `--version`.
+
+### Option B — AWS EC2 (Terraform)
+
+Provisions an instance, security group, Elastic IP, and IAM-for-SSM, then runs
+the installer for you:
+
+```sh
+cd deploy/terraform
+cp terraform.tfvars.example terraform.tfvars
+terraform init && terraform apply
+```
+
+See [`deploy/terraform/README.md`](deploy/terraform/README.md) for prerequisites,
+cost, and how to read the bootstrap address from the node.
+
+### Option C — systemd (manual)
 
 ```sh
 make rendezvous
@@ -109,7 +141,7 @@ Open the port (both TCP and UDP):
 sudo ufw allow 4001/tcp && sudo ufw allow 4001/udp
 ```
 
-### Option B — Docker
+### Option D — Docker
 
 ```sh
 cd deploy
@@ -117,7 +149,7 @@ docker compose up -d
 docker compose logs -f          # look for the "client: gochat -bootstrap ..." line
 ```
 
-### Option C — run it directly
+### Option E — run it directly
 
 ```sh
 ./bin/gochat-rendezvous -port 4001 -data ./rendezvous-data -public 203.0.113.5
@@ -198,8 +230,9 @@ Use `-nick <name>` to set a display name, or `/nick <name>` inside the app.
 | Display name / bootstrap | `<config>/config.json` |
 | Client log | `<config>/gochat.log` (0600; library logs go here so they can't corrupt the TUI — use `-debug` to log to stderr instead) |
 
-The rendezvous node stores only its identity key (in `-data`), which keeps its peer
-ID — and therefore your clients' saved bootstrap address — stable across restarts.
+The rendezvous node stores only its identity key (in `-data`; the installer uses
+`/var/lib/gochat`), which keeps its peer ID — and therefore your clients' saved
+bootstrap address — stable across restarts.
 
 ---
 
@@ -296,6 +329,8 @@ internal/store/          JSON persistence (config, rooms), atomic writes, 0600
 internal/tui/            Bubble Tea model, view and commands
 internal/version/        build metadata injected via -ldflags
 deploy/                  systemd unit, Dockerfile, docker-compose
+deploy/terraform/        AWS EC2 deployment (Terraform)
+scripts/install-rendezvous.sh  one-line server installer
 scripts/smoke-test.sh    end-to-end test with the real binaries
 .github/workflows/       CI (test + cross-build) and tag-driven release
 .goreleaser.yaml         release builds (binaries + checksums)

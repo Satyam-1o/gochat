@@ -15,3 +15,11 @@
 .DS_Store
 *.swp
 *~
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfvars
+!*.tfvars.example
