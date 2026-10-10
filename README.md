@@ -1,0 +1,280 @@
+# gochat
+
+A peer-to-peer, terminal-based group chat. Talk in encrypted, passphrase-protected
+rooms with a handful of friends over the internet — no accounts, no servers holding
+your messages.
+
+- **Terminal UI** built with [Bubble Tea](https://github.com/charmbracelet/bubbletea).
+- **P2P transport** via [libp2p](https://libp2p.io/) (TCP + QUIC, hole punching,
+  circuit relay).
+- **Group rooms**: many peers per room, one gossipsub topic per room.
+- **Works over the internet** through a tiny rendezvous/relay node you host yourself.
+- **Rooms persist, messages don't**: the app remembers which rooms you joined and
+  auto-reconnects on launch, but chat history is ephemeral and disappears on exit.
+- **Private by construction**: a room's network topic is derived from the
+  passphrase (Argon2id → SHA-256), and every message is encrypted with
+  XChaCha20-Poly1305. The rendezvous node only ever sees hashed topics and
+  ciphertext.
+
+---
+
+## How it works
+
+```
+        alice                     rendezvous node                    bob
+  ┌──────────────┐            ┌────────────────────┐          ┌──────────────┐
+  │  Bubble Tea  │            │   PEX server       │          │  Bubble Tea  │
+  │  room mgr    │  register  │   circuit relay    │ register │  room mgr    │
+  │  gossipsub ──┼───────────▶│   pubsub bridge ───┼─────────▶│── gossipsub  │
+  └──────────────┘            └────────────────────┘          └──────────────┘
+        ▲                                                             │
+        └──────────────── encrypted messages relayed ────────────────┘
+```
+
+1. Every client connects to your **rendezvous node** (a multiaddr you configure once).
+2. When you join a room, the client subscribes to the room's gossipsub topic and
+   registers that (hashed) topic with the node over a small PEX protocol.
+3. The node introduces peers in the same topic and also acts as a **pubsub bridge**:
+   it subscribes to the topic and relays encrypted messages between clients. This
+   means chat works even when neither client can dial the other directly (the common
+   case behind NAT). Direct peer-to-peer links, when they do form, are a performance
+   optimization on top.
+4. On a LAN, clients also find each other via mDNS without any server at all.
+
+The rendezvous node never sees room names or message contents — only hashed topics,
+peer IDs, and ciphertext. You can host it on the smallest VPS you can find.
+
+---
+
+## Requirements
+
+- Go 1.27+ to build (or use the provided Docker image for the server).
+- Any modern terminal.
+- For internet use: a small always-on machine with a public IP.
+
+---
+
+## Build
+
+```sh
+git clone <this repo> gochat && cd gochat
+make build          # -> bin/gochat and bin/gochat-rendezvous
+```
+
+Or directly:
+
+```sh
+go build -o bin/gochat ./cmd/gochat
+go build -o bin/gochat-rendezvous ./cmd/gochat-rendezvous
+```
+
+---
+
+## 1. Run a rendezvous node
+
+Pick **one** of the following. The node prints a ready-to-paste client address.
+
+### Option A — systemd (recommended on a VPS)
+
+```sh
+make rendezvous
+sudo install -m 0755 bin/gochat-rendezvous /usr/local/bin/gochat-rendezvous
+sudo useradd --system --home /var/lib/gochat --create-home --shell /usr/sbin/nologin gochat
+# Edit deploy/gochat-rendezvous.service and set -public to your server's IP/DNS:
+sudo install -m 0644 deploy/gochat-rendezvous.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now gochat-rendezvous
+sudo journalctl -u gochat-rendezvous -n 40 --no-pager
+```
+
+Open the port (both TCP and UDP):
+
+```sh
+sudo ufw allow 4001/tcp && sudo ufw allow 4001/udp
+```
+
+### Option B — Docker
+
+```sh
+cd deploy
+docker compose up -d
+docker compose logs -f          # look for the "client: gochat -bootstrap ..." line
+```
+
+### Option C — run it directly
+
+```sh
+./bin/gochat-rendezvous -port 4001 -data ./rendezvous-data -public 203.0.113.5
+```
+
+The node prints:
+
+```
+  peer ID : 12D3KooW...
+  client-ready address (public host):
+    /ip4/203.0.113.5/tcp/4001/p2p/12D3KooW...
+    client: gochat -bootstrap "/ip4/203.0.113.5/tcp/4001/p2p/12D3KooW..."
+```
+
+Copy that **`gochat -bootstrap ...`** line — you'll give it to clients in the next step.
+
+> If your server is behind NAT or you use a DNS name, pass `-public <host>` or one or
+> more `-announce /dns4/chat.example.com/tcp/4001/p2p/<peerID>` flags. Run
+> `gochat-rendezvous -h` for all options.
+
+---
+
+## 2. Use the client
+
+```sh
+./bin/gochat -bootstrap "/ip4/203.0.113.5/tcp/4001/p2p/12D3KooW..."
+```
+
+The bootstrap address is saved, so later launches just need:
+
+```sh
+./bin/gochat
+```
+
+Then, inside the TUI:
+
+```
+/join secret-room correct-horse-battery-staple
+```
+
+Everyone who wants to talk runs the same command with the **same room name and
+passphrase**. That's it — messages are end-to-end encrypted and lost when you quit.
+
+Use `-nick <name>` to set a display name, or `/nick <name>` inside the app.
+
+### Commands
+
+| Command | Description |
+| --- | --- |
+| `/join <room> <passphrase>` | Join (or create) a private room |
+| `/leave` | Leave the active room |
+| `/nick <name>` | Change your display name |
+| `/rooms` | List saved rooms and peer counts |
+| `/peers` | List peers in the active room |
+| `/clear` | Clear the message pane |
+| `/help` | Show help |
+| `/quit` | Exit |
+
+### Keys
+
+| Key | Action |
+| --- | --- |
+| `Enter` | Send the message |
+| `Tab` / `Esc` | Switch focus between sidebar and input |
+| `↑` / `↓` | Select a room in the sidebar |
+| `PgUp` / `PgDn` | Scroll the message pane |
+| `Ctrl+C` | Quit |
+
+---
+
+## Data & config locations
+
+| What | Where |
+| --- | --- |
+| Client data | `$XDG_CONFIG_HOME/gochat` (usually `~/.config/gochat`) unless `-config` is set |
+| Identity key | `<config>/identity` (0600) |
+| Saved rooms | `<config>/rooms.json` (0600, stores the derived room key + topic, **not** the passphrase) |
+| Display name / bootstrap | `<config>/config.json` |
+
+The rendezvous node stores only its identity key (in `-data`), which keeps its peer
+ID — and therefore your clients' saved bootstrap address — stable across restarts.
+
+---
+
+## Headless mode (scripts & CI)
+
+The client can run without the TUI, which is handy for verifying a deployment:
+
+```sh
+# Receiver: wait up to 45s for a message containing "ping"
+./bin/gochat -headless -config /tmp/bob -nick bob \
+  -bootstrap "$ADDR" -room demo -pass hunter2 -expect ping -timeout 45s
+
+# Sender: send "ping" every 2s
+./bin/gochat -headless -config /tmp/alice -nick alice \
+  -bootstrap "$ADDR" -room demo -pass hunter2 -send ping -timeout 40s
+```
+
+Passphrases can also be read from a file with `-pass-file` (preferred, since `-pass`
+is visible in the process list).
+
+---
+
+## Testing
+
+```sh
+make test     # full unit + integration suite
+make check    # gofmt check + go vet + tests
+make smoke    # build and run an end-to-end test with the real binaries
+```
+
+The suite includes an end-to-end test (`TestEndToEndViaRendezvous`) that stands up a
+rendezvous node plus two clients which discover each other only through it and
+exchange an encrypted message. `scripts/smoke-test.sh` does the same with the built
+binaries.
+
+---
+
+## Troubleshooting
+
+**Clients don't find each other over the internet.**
+- Make sure every client was started with the same `-bootstrap` address and joined
+  the same room **name and passphrase**.
+- Check the node is reachable: `nc -vz <host> 4001` (TCP) — remember to open UDP too.
+- Verify the peer ID in the bootstrap address matches the node's startup banner.
+
+**It works on a LAN but not across the internet.**
+- You likely have no rendezvous node configured. Set `-bootstrap ...` (this is saved).
+- The rendezvous node's `-public` host must be reachable from the clients.
+
+**"wrong passphrase"-style behavior: two people see the room but no messages.**
+- Room topics are hash-derived from the passphrase; a different passphrase means a
+  different, invisible room. Everyone must use the exact same passphrase.
+
+**Direct peer connections fail in the logs.**
+- That's expected and harmless. Delivery goes through the rendezvous bridge; direct
+  links are only an optimization.
+
+---
+
+## Project layout
+
+```
+cmd/gochat/              client entry point (TUI + headless)
+cmd/gochat-rendezvous/   rendezvous/relay node entry point
+internal/crypto/         Argon2id key derivation, topic hashing, XChaCha20-Poly1305
+internal/identity/       persistent Ed25519 libp2p identity
+internal/node/           libp2p host, mDNS, PEX wiring, pubsub bridge
+internal/pex/            peer-exchange protocol (register/discover/introduce)
+internal/room/           gossipsub room manager, encryption, presence, persistence
+internal/store/          JSON persistence (config, rooms), atomic writes, 0600
+internal/tui/            Bubble Tea model, view and commands
+deploy/                  systemd unit, Dockerfile, docker-compose
+scripts/smoke-test.sh    end-to-end test with the real binaries
+```
+
+---
+
+## Security & privacy notes
+
+- **Passphrase → key**: Argon2id derives a per-room key; a SHA-256-based topic is
+  published instead of the room name.
+- **Message encryption**: XChaCha20-Poly1305 with a per-room message key
+  (HKDF-derived); the AEAD's associated data binds the sender's peer ID and the topic,
+  so ciphertext can't be replayed into another room or attributed to another peer.
+- **What the rendezvous node can see**: hashed room topics, peer IDs/addresses, message
+  timing and sizes. It cannot read your messages or learn your room names.
+- **What the rendezvous node cannot do**: decrypt messages, enumerate passphrases
+  efficiently (Argon2id), or join a room without the passphrase.
+- Messages are **not persisted** and there is no offline history.
+
+---
+
+## License
+
+Add a license of your choice (e.g. MIT) before distributing.

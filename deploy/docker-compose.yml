@@ -1,0 +1,35 @@
+# docker compose up -d
+#
+# Then read the client-ready address from the logs:
+#   docker compose logs -f
+# It prints a line like:
+#   client: gochat -bootstrap "/ip4/203.0.113.5/tcp/4001/p2p/12D3Koo..."
+#
+# The named volume keeps the node's identity stable across restarts, so the
+# bootstrap address (which embeds the peer ID) never changes.
+
+services:
+  rendezvous:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: gochat-rendezvous:latest
+    container_name: gochat-rendezvous
+    restart: unless-stopped
+    ports:
+      - "4001:4001/tcp"
+      - "4001:4001/udp"
+    volumes:
+      - gochat-data:/data
+    command:
+      - "-port"
+      - "4001"
+      - "-data"
+      - "/data"
+      # Set this to your public IP / DNS name so the printed bootstrap address
+      # is reachable from clients:
+      - "-public"
+      - "203.0.113.5"
+
+volumes:
+  gochat-data:

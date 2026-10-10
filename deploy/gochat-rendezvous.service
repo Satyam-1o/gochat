@@ -1,0 +1,55 @@
+# systemd unit for the gochat rendezvous/relay node.
+#
+# Install:
+#   1. Build and copy the binary:
+#        make rendezvous
+#        sudo install -m 0755 bin/gochat-rendezvous /usr/local/bin/gochat-rendezvous
+#   2. Create an unprivileged user and data dir:
+#        sudo useradd --system --home /var/lib/gochat --create-home --shell /usr/sbin/nologin gochat
+#   3. Edit ExecStart below: set -public to your public IP/DNS name.
+#   4. Install and start:
+#        sudo install -m 0644 deploy/gochat-rendezvous.service /etc/systemd/system/
+#        sudo systemctl daemon-reload
+#        sudo systemctl enable --now gochat-rendezvous
+#        sudo journalctl -u gochat-rendezvous -n 40 --no-pager
+#
+# Open the port in your firewall (both TCP and UDP, since QUIC is also served):
+#   sudo ufw allow 4001/tcp && sudo ufw allow 4001/udp
+#
+# Run `gochat-rendezvous -h` for all flags. Copy the "client: gochat -bootstrap ..."
+# line it prints into your clients (or set it once with `gochat -bootstrap ...`).
+
+[Unit]
+Description=gochat rendezvous/relay node (PEX + circuit relay + pubsub bridge)
+Documentation=https://github.com/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gochat
+Group=gochat
+
+# --- EDIT ME ---------------------------------------------------------------
+# Replace 203.0.113.5 with your server's public IP or DNS name so the printed
+# client address is reachable from the outside.
+ExecStart=/usr/local/bin/gochat-rendezvous -port 4001 -data /var/lib/gochat -public 203.0.113.5
+# ---------------------------------------------------------------------------
+
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65536
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/var/lib/gochat
+
+[Install]
+WantedBy=multi-user.target
