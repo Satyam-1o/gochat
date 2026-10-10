@@ -1,6 +1,9 @@
 # Build output
 /bin/
 
+# GoReleaser output
+/dist/
+
 # Local rendezvous node data (identity keys, etc.)
 /data-rendezvous/
 /rendezvous-data/

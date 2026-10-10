@@ -1,0 +1,77 @@
+# GoReleaser config for gochat.
+#
+# Produces one archive per OS/arch containing both binaries, plus checksums,
+# and attaches them to a GitHub Release on every v* tag.
+#
+#   Local dry run:   goreleaser release --snapshot --clean
+#   Validate config: goreleaser check
+#
+# Docs: https://goreleaser.com
+version: 2
+
+project_name: gochat
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: gochat
+    main: ./cmd/gochat
+    binary: gochat
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/Satyam-1o/gochat/internal/version.Version={{ .Version }}
+      - -X github.com/Satyam-1o/gochat/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/Satyam-1o/gochat/internal/version.Date={{ .CommitDate }}
+
+  - id: gochat-rendezvous
+    main: ./cmd/gochat-rendezvous
+    binary: gochat-rendezvous
+    env:
+      - CGO_ENABLED=0
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    ldflags:
+      - -s -w
+      - -X github.com/Satyam-1o/gochat/internal/version.Version={{ .Version }}
+      - -X github.com/Satyam-1o/gochat/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/Satyam-1o/gochat/internal/version.Date={{ .CommitDate }}
+
+archives:
+  - id: gochat
+    ids: [gochat, gochat-rendezvous]
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  draft: false
+  prerelease: auto
+  name_template: "gochat {{ .Version }}"

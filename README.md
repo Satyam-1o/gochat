@@ -1,5 +1,9 @@
 # gochat
 
+[![ci](https://github.com/Satyam-1o/gochat/actions/workflows/ci.yml/badge.svg)](https://github.com/Satyam-1o/gochat/actions/workflows/ci.yml)
+[![release](https://github.com/Satyam-1o/gochat/actions/workflows/release.yml/badge.svg)](https://github.com/Satyam-1o/gochat/actions/workflows/release.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A peer-to-peer, terminal-based group chat. Talk in encrypted, passphrase-protected
 rooms with a handful of friends over the internet — no accounts, no servers holding
 your messages.
@@ -233,6 +237,25 @@ binaries.
 
 ---
 
+## Releasing
+
+Releases are built by CI with [GoReleaser](https://goreleaser.com). To cut one:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The `release` workflow builds Linux/macOS/Windows (amd64/arm64) archives — each
+containing both binaries — plus `checksums.txt`, and attaches them to the GitHub
+Release. To preview the artifacts locally without publishing:
+
+```sh
+goreleaser release --snapshot --clean   # -> ./dist
+```
+
+---
+
 ## Troubleshooting
 
 **Clients don't find each other over the internet.**
@@ -274,6 +297,8 @@ internal/tui/            Bubble Tea model, view and commands
 internal/version/        build metadata injected via -ldflags
 deploy/                  systemd unit, Dockerfile, docker-compose
 scripts/smoke-test.sh    end-to-end test with the real binaries
+.github/workflows/       CI (test + cross-build) and tag-driven release
+.goreleaser.yaml         release builds (binaries + checksums)
 ```
 
 ---

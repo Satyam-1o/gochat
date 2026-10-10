@@ -5,7 +5,8 @@
 #   make test      run the full test suite
 #   make check     gofmt check + go vet + tests
 #   make smoke     build, then run the end-to-end smoke test
-#   make run       run the rendezvous node locally (dev)
+#   make snapshot  build release artifacts locally (needs goreleaser)
+#   make run-server run the rendezvous node locally (dev)
 
 GO      ?= go
 BINDIR  ?= bin
@@ -29,7 +30,7 @@ LDFLAGS  ?= -s -w \
 CLIENT   := $(BINDIR)/gochat
 RENDEZVOUS := $(BINDIR)/gochat-rendezvous
 
-.PHONY: all build client rendezvous test check fmt fmt-check vet clean smoke run-server help
+.PHONY: all build client rendezvous test check fmt fmt-check vet clean smoke snapshot run-server help
 
 all: build
 
@@ -61,9 +62,13 @@ clean:
 smoke: build
 	./scripts/smoke-test.sh
 
+# Build release artifacts locally (no publishing). Requires goreleaser.
+snapshot:
+	goreleaser release --snapshot --clean
+
 # Run a local rendezvous/relay node (dev convenience).
 run-server:
 	$(GO) run ./cmd/gochat-rendezvous -port $(PORT) -data ./data-rendezvous $(if $(PUBLIC),-public $(PUBLIC),)
 
 help:
-	@sed -n '2,12p' Makefile
+	@sed -n '2,9p' Makefile
