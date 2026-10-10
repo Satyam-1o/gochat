@@ -274,6 +274,11 @@ func runHeadless(dir, nick, bootstrapFlag, roomName, passphrase, send, expect st
 				if ev.Msg == nil {
 					continue
 				}
+				if ev.Msg.Own {
+					// Our own local echo; not something we received.
+					fmt.Printf("SENT %s\n", ev.Msg.Body)
+					continue
+				}
 				fmt.Printf("RECV %s: %s\n", ev.Msg.Nick, ev.Msg.Body)
 				if expect != "" && strings.Contains(ev.Msg.Body, expect) {
 					fmt.Printf("OK: received %q\n", expect)

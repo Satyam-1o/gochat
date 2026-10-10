@@ -126,9 +126,15 @@ func (m *Model) renderMsg(ms *room.Message) string {
 	if nick == "" {
 		nick = "(anon)"
 	}
-	nickPart := styleNick(ms.Nick).
-		Render(nick + ":")
-	body := styleBody.Render(ms.Body)
+	nickStyle := styleNick(ms.Nick)
+	bodyStyle := styleBody
+	if ms.Own {
+		nick += " (you)"
+		nickStyle = styleNickOwn
+		bodyStyle = styleBodyOwn
+	}
+	nickPart := nickStyle.Render(nick + ":")
+	body := bodyStyle.Render(ms.Body)
 	return lipgloss.JoinHorizontal(lipgloss.Top,
 		styleTime.Render("["+t+"] "),
 		nickPart,

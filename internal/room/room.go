@@ -63,6 +63,7 @@ type Message struct {
 	Nick string
 	Body string
 	TS   int64
+	Own  bool // true for messages we sent ourselves (local echo)
 }
 
 // wirePayload is the encrypted plaintext published to pubsub.
@@ -328,7 +329,8 @@ func (m *Manager) Send(name, body string) error {
 	if !ok {
 		return fmt.Errorf("not in room %q", name)
 	}
-	p := wirePayload{Kind: "msg", ID: uuid.NewString(), Nick: m.Nick(), Body: body, TS: time.Now().Unix()}
+	nick := m.Nick()
+	p := wirePayload{Kind: "msg", ID: uuid.NewString(), Nick: nick, Body: body, TS: time.Now().Unix()}
 	plain, err := json.Marshal(p)
 	if err != nil {
 		return err
@@ -337,7 +339,18 @@ func (m *Manager) Send(name, body string) error {
 	if err != nil {
 		return err
 	}
-	return r.topic.Publish(m.ctx, env)
+	if err := r.topic.Publish(m.ctx, env); err != nil {
+		return err
+	}
+
+	// Local echo: show our own message immediately. GossipSub never delivers a
+	// message back to its sender, and readMessages skips our own peer ID, so
+	// this is the only place our sent messages enter the UI.
+	m.saw(p.ID)
+	ms := &Message{ID: p.ID, Room: r.Name, Nick: nick, Body: body, TS: p.TS, Own: true}
+	m.appendHistory(r.Name, ms)
+	m.emit(Event{Type: EventMessage, Room: r.Name, From: m.host.ID(), Nick: nick, Msg: ms})
+	return nil
 }
 
 // Restore re-joins every room saved on disk (auto-reconnect on startup).

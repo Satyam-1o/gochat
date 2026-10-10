@@ -168,6 +168,51 @@ func TestWrongPassphraseIsolates(t *testing.T) {
 	}
 }
 
+func TestSendAppearsInOwnHistory(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	nd := testNode(t, ctx)
+	mgr, err := NewManager(ctx, nd.Host, nd, testStore(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer mgr.Close()
+
+	mgr.SetNick("alice")
+	if err := mgr.Join("solo", "pw"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := mgr.Send("solo", "hello myself"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+
+	// Sending must echo locally (GossipSub does not deliver to the sender).
+	got := waitForEvent(t, mgr.Events(), "own message echo", 10*time.Second,
+		func(ev Event) bool { return ev.Type == EventMessage && ev.Msg != nil })
+	if !got.Msg.Own {
+		t.Fatalf("own message not marked Own: %+v", got.Msg)
+	}
+	if got.Msg.Body != "hello myself" {
+		t.Fatalf("body = %q, want %q", got.Msg.Body, "hello myself")
+	}
+	if got.Msg.Nick != "alice" {
+		t.Fatalf("nick = %q, want alice", got.Msg.Nick)
+	}
+
+	// It must also be in the in-session history so re-renders show it.
+	found := false
+	for _, ms := range mgr.Messages("solo") {
+		if ms.ID == got.Msg.ID && ms.Body == "hello myself" && ms.Own {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("sent message missing from history: %+v", mgr.Messages("solo"))
+	}
+}
+
 func TestRestoreRejoinsSavedRooms(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

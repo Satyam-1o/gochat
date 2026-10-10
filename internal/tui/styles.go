@@ -29,6 +29,10 @@ var (
 	styleSys  = lipgloss.NewStyle().Foreground(cWarn).Faint(true)
 	styleErr  = lipgloss.NewStyle().Foreground(cErr)
 
+	// Own sent messages are tinted so it is obvious which lines are yours.
+	styleNickOwn = lipgloss.NewStyle().Foreground(cGreen).Bold(true)
+	styleBodyOwn = lipgloss.NewStyle().Foreground(lipgloss.Color("252"))
+
 	nickPalette = []lipgloss.Color{
 		lipgloss.Color("#F7768E"),
 		lipgloss.Color("#7AA2F7"),
